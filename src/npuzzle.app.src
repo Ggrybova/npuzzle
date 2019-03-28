@@ -1,0 +1,12 @@
+{application, npuzzle,
+ [
+  {description, "Npuzzle"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { npuzzle_app, []}},
+  {env, []}
+ ]}.
