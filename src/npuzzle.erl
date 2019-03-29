@@ -49,24 +49,27 @@ get_input_data(FileName) ->
 read_map(File) ->
     case get_size(File) of
         {ok, Size} when is_integer(Size) andalso Size > 2 ->
-            io:format("     Size: ~p~n", [Size]),
-            read_map(File, Size, dict:store(size, Size, dict:new()));
+            read_map(File, Size, dict:store(size, Size, dict:new()), 1);
         _ -> {error, "Wrong puzzle size"}
     end.
 
-read_map(File, Size, State) ->
+read_map(File, Size, State, Row) ->
     case io:get_line(File, '') of
         eof -> {ok, State};
         Line ->
             case string:str(Line, "#") of
                 0 ->
-                    fill_state(lists:droplast(Line), Size, State),
-                    read_map(File, Size, State);
+                    case fill_state(lists:droplast(Line), Size, State, Row) of
+                        {error, _} = E -> io:format("Exit1~n", []), E;
+                        {R, S} -> read_map(File, Size, S, R)
+                    end;
                 N when is_integer(N) andalso N > 1 ->
-                    fill_state(string:left(Line, N-1), Size, State),
-                    read_map(File, Size, State);
+                    case fill_state(string:left(Line, N-1), Size, State, Row) of
+                        {error, _} = E -> io:format("Exit2~n", []), E;
+                        {R, S} -> read_map(File, Size, S, R)
+                    end;
                 _ ->
-                    read_map(File, Size, State)
+                    read_map(File, Size, State, Row)
             end
     end.
 
@@ -75,21 +78,55 @@ get_size(File) ->
         eof -> error;
         Line ->
             case string:str(Line, "#") of
-                0 ->
-                    case string:words(Line) of
+                1 -> get_size(File);
+                N when is_integer(N) andalso N >= 0 ->
+                    Line2 =
+                        case N of
+                            0 -> Line;
+                            _ -> string:left(Line, N - 1)
+                        end,
+                    case string:words(Line2) of
                         1 ->
-                            {S, _} = string:to_integer(Line),
+                            {S, _} = string:to_integer(Line2),
                             {ok, S};
-                        _ ->
-                            error
+                        _ -> error
                     end;
-                N when is_integer(N) andalso N > 0 ->
-                    get_size(File);
-                _ ->
-                    error
+                _ -> error
             end
     end.
 
-fill_state(Line, Size, State) ->
-    io:format("State: ~p~n", [dict:to_list(State)]).
+fill_state([], _, State, Row) ->
+    io:format("N: ~p~n", [Row]),
+    {Row, State};
 
+fill_state(Line, Size, State, Row) ->
+    io:format("RowN: ~p~n", [Row]),
+    case string:words(Line) of
+        Size ->
+            Words = string:tokens(Line, " "),
+            io:format("**  Words: ~p~n", [Words]),
+            case fill_row(Row, 1, Size, Words, State) of
+                {ok, State2} -> {Row+1, State2};
+                Error -> Error
+            end;
+        N when N < Size ->
+            case string:tokens(Line, " ") of
+                [] -> {Row, State}; %% !!!!!
+                _ -> {error, "You have not enough sells in row"}
+            end;
+        _ ->
+            {error, "You have more sells in row than puzzle size"}
+    end.
+
+fill_row(_, _, _, [], State) ->
+%%    io:format("~p: {~p,~p}; Words: []~n", [Size, X, Y]),
+    {ok, State};
+
+fill_row(X, Y, Size, [Word|Tail], State) when X =< Size ->
+%%    io:format("~p: {~p,~p}; Words: ~p~n", [Size, X, Y, Words]),
+    {Nbr, _} = string:to_integer(Word),
+    State2 = dict:store({X, Y}, Nbr, State),
+    fill_row(X, Y+1, Size, Tail, State2);
+
+fill_row(_, _, _, _, _) ->
+    {error, "You have more rows than puzzle size"}.
