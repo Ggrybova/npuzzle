@@ -10,15 +10,15 @@
 -author("ggrybova").
 
 %% API
--export([a_star/3,
+-export([a_star/4,
 	h_weight/2,
 	min_weight/2,
 	record_to_from/8]).
 
 -type pos()::{non_neg_integer(), non_neg_integer()}.
 
--spec a_star(Start::pos(), Goal::pos(), Heuristic::non_neg_integer()) -> list(pos()) | {error, Reason::te}.
-a_star(Start, Goal, Heuristic) ->
+-spec a_star(Start::pos(), Goal::pos(), Heuristic::non_neg_integer(), FinalState::list()) -> list(pos()) | {error, Reason::te}.
+a_star(Start, Goal, Heuristic, FinalState) ->
 	F = case Heuristic of
 			1 -> fun manhattan_distance/2;
 			2 -> fun h_weight/2;
@@ -34,7 +34,7 @@ a_star(Start, Goal, Heuristic) ->
 %%	io:format("Closed: ~p~nOpened: ~p~nFWeight: ~p~nFrom: ~p~n", [ets:tab2list(Closed), ets:tab2list(Opened), dict:to_list(FWeight), dict:to_list(From)]),
 	case find_path(Goal, Closed, Opened, GWeight, FWeight, From, is_empty(Opened), F) of
 		{ok, Path} ->
-			io:format("PATH: ~p~n", [Path]);
+			compose_path(Goal, Path);
 		_ -> {error, "Unsolvabled puzzle"}
 	end.
 
@@ -157,3 +157,9 @@ is_open(OpenQueue, State) ->
 
 is_closed(ClosedSet, State) ->
 	ets:member(ClosedSet, State).
+
+compose_path(Goal, List) ->
+	io:format("PATH: ~p~n", [List]),
+	ok.
+
+
